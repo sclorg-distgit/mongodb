@@ -1,0 +1,62 @@
+diff -Nur mongodb-src-r2.4.4.orig/src/third_party/s2/base/casts.h mongodb-src-r2.4.4/src/third_party/s2/base/casts.h
+--- mongodb-src-r2.4.4.orig/src/third_party/s2/base/casts.h	2013-07-06 16:26:05.497291822 +0200
++++ mongodb-src-r2.4.4/src/third_party/s2/base/casts.h	2013-07-07 12:27:23.350678970 +0200
+@@ -160,7 +160,7 @@
+ inline Dest bit_cast(const Source& source) {
+   // Compile time assertion: sizeof(Dest) == sizeof(Source)
+   // A compile error here means your Dest and Source have different sizes.
+-  typedef char VerifySizesAreEqual [sizeof(Dest) == sizeof(Source) ? 1 : -1];
++  typedef char VerifySizesAreEqual [sizeof(Dest) == sizeof(Source) ? 1 : -1] __attribute__((unused));
+ 
+   Dest dest;
+   memcpy(&dest, &source, sizeof(dest));
+diff -Nur mongodb-src-r2.4.4.orig/src/third_party/s2/base/macros.h mongodb-src-r2.4.4/src/third_party/s2/base/macros.h
+--- mongodb-src-r2.4.4.orig/src/third_party/s2/base/macros.h	2013-07-06 16:26:05.499292077 +0200
++++ mongodb-src-r2.4.4/src/third_party/s2/base/macros.h	2013-07-07 12:22:38.549907130 +0200
+@@ -46,7 +46,7 @@
+ };
+ 
+ #define COMPILE_ASSERT(expr, msg) \
+-  typedef CompileAssert<(bool(expr))> msg[bool(expr) ? 1 : -1]
++  typedef CompileAssert<(bool(expr))> msg[bool(expr) ? 1 : -1] __attribute__((unused))
+ 
+ // Implementation details of COMPILE_ASSERT:
+ //
+diff -Nur mongodb-src-r2.4.4.orig/src/third_party/s2/util/coding/coder.h mongodb-src-r2.4.4/src/third_party/s2/util/coding/coder.h
+--- mongodb-src-r2.4.4.orig/src/third_party/s2/util/coding/coder.h	2013-07-06 16:26:05.509293353 +0200
++++ mongodb-src-r2.4.4/src/third_party/s2/util/coding/coder.h	2013-07-07 12:20:37.419825340 +0200
+@@ -358,14 +358,14 @@
+ 
+ inline void Encoder::putfloat(float f) {
+   uint32 v;
+-  typedef char VerifySizesAreEqual[sizeof(f) == sizeof(v) ? 1 : -1];
++  typedef char VerifySizesAreEqual[sizeof(f) == sizeof(v) ? 1 : -1] __attribute__((unused));
+   memcpy(&v, &f, sizeof(f));
+   put32(v);
+ }
+ 
+ inline void Encoder::putdouble(double d) {
+   uint64 v;
+-  typedef char VerifySizesAreEqual[sizeof(d) == sizeof(v) ? 1 : -1];
++  typedef char VerifySizesAreEqual[sizeof(d) == sizeof(v) ? 1 : -1] __attribute__((unused));
+   memcpy(&v, &d, sizeof(d));
+   put64(v);
+ }
+@@ -408,7 +408,7 @@
+ inline float Decoder::getfloat() {
+   uint32 v = get32();
+   float f;
+-  typedef char VerifySizesAreEqual[sizeof(f) == sizeof(v) ? 1 : -1];
++  typedef char VerifySizesAreEqual[sizeof(f) == sizeof(v) ? 1 : -1] __attribute__((unused));
+   memcpy(&f, &v, sizeof(f));
+   return f;
+ }
+@@ -416,7 +416,7 @@
+ inline double Decoder::getdouble() {
+   uint64 v = get64();
+   double d;
+-  typedef char VerifySizesAreEqual[sizeof(d) == sizeof(v) ? 1 : -1];
++  typedef char VerifySizesAreEqual[sizeof(d) == sizeof(v) ? 1 : -1] __attribute__((unused));
+   memcpy(&d, &v, sizeof(d));
+   return d;
+ }

@@ -1,0 +1,247 @@
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/db/db.cpp mongodb-src-r2.4.4/src/mongo/db/db.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/db/db.cpp	2013-06-16 20:57:57.398198115 +0200
++++ mongodb-src-r2.4.4/src/mongo/db/db.cpp	2013-06-28 20:44:18.029137049 +0200
+@@ -396,7 +396,11 @@
+         boost::filesystem::path path( dbpath );
+         for ( boost::filesystem::directory_iterator i( path );
+                 i != boost::filesystem::directory_iterator(); ++i ) {
++        #if BOOST_VERSION >= 104400
+             string fileName = boost::filesystem::path(*i).leaf().string();
++        #else
++            string fileName = boost::filesystem::path(*i).leaf();
++        #endif
+             if ( boost::filesystem::is_directory( *i ) &&
+                     fileName.length() && fileName[ 0 ] == '$' )
+                 boost::filesystem::remove_all( *i );
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/db/dur_journal.cpp mongodb-src-r2.4.4/src/mongo/db/dur_journal.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/db/dur_journal.cpp	2013-06-16 20:57:57.418194086 +0200
++++ mongodb-src-r2.4.4/src/mongo/db/dur_journal.cpp	2013-06-28 20:44:18.032137434 +0200
+@@ -190,7 +190,11 @@
+                 for ( boost::filesystem::directory_iterator i( jdir );
+                         i != boost::filesystem::directory_iterator();
+                         ++i ) {
++                #if BOOST_VERSION >= 104400
+                     string fileName = boost::filesystem::path(*i).leaf().string();
++                #else
++                    string fileName = boost::filesystem::path(*i).leaf();
++                #endif
+                     if( anyFiles || str::startsWith(fileName, "j._") )
+                         return true;
+                 }
+@@ -208,7 +212,11 @@
+                 for ( boost::filesystem::directory_iterator i( getJournalDir() );
+                         i != boost::filesystem::directory_iterator();
+                         ++i ) {
++                #if BOOST_VERSION >= 104400
+                     string fileName = boost::filesystem::path(*i).leaf().string();
++                #else
++                    string fileName = boost::filesystem::path(*i).leaf();
++                #endif
+                     if( str::startsWith(fileName, "j._") ) {
+                         try {
+                             removeOldJournalFile(*i);
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/db/dur_recover.cpp mongodb-src-r2.4.4/src/mongo/db/dur_recover.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/db/dur_recover.cpp	2013-06-16 20:57:57.407196302 +0200
++++ mongodb-src-r2.4.4/src/mongo/db/dur_recover.cpp	2013-06-28 20:44:18.035137819 +0200
+@@ -75,7 +75,11 @@
+                     i != boost::filesystem::directory_iterator();
+                     ++i ) {
+                 boost::filesystem::path filepath = *i;
++            #if BOOST_VERSION >= 104400
+                 string fileName = boost::filesystem::path(*i).leaf().string();
++            #else
++                string fileName = boost::filesystem::path(*i).leaf();
++            #endif
+                 if( str::startsWith(fileName, "j._") ) {
+                     unsigned u = str::toUnsigned( str::after(fileName, '_') );
+                     if( m.count(u) ) {
+@@ -87,8 +91,13 @@
+             for( map<unsigned,boost::filesystem::path>::iterator i = m.begin(); i != m.end(); ++i ) {
+                 if( i != m.begin() && m.count(i->first - 1) == 0 ) {
+                     uasserted(13532,
+-                    str::stream() << "unexpected file in journal directory " << dir.string()
+-                      << " : " << boost::filesystem::path(i->second).leaf().string() << " : can't find its preceding file");
++                    str::stream() << "unexpected file in journal directory " << dir.string() << " : "
++                    #if BOOST_VERSION >= 104400
++                        << boost::filesystem::path(i->second).leaf().string()
++                    #else
++                        << boost::filesystem::path(i->second).leaf()
++                    #endif
++                        << " : can't find its preceding file");
+                 }
+                 files.push_back(i->second);
+             }
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/db/initialize_server_global_state.cpp mongodb-src-r2.4.4/src/mongo/db/initialize_server_global_state.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/db/initialize_server_global_state.cpp	2013-06-16 20:57:57.384200935 +0200
++++ mongodb-src-r2.4.4/src/mongo/db/initialize_server_global_state.cpp	2013-06-28 20:44:18.042138718 +0200
+@@ -166,8 +166,13 @@
+ #endif
+         if (!cmdLine.logpath.empty() && !isMongodShutdownSpecialCase) {
+             fassert(16448, !cmdLine.logWithSyslog);
++        #if BOOST_VERSION >= 104400
+             string absoluteLogpath = boost::filesystem::absolute(
+                     cmdLine.logpath, cmdLine.cwd).string();
++        #else
++            string absoluteLogpath = boost::filesystem::complete(
++                    cmdLine.logpath, cmdLine.cwd).string();
++        #endif
+             if (!initLogging(absoluteLogpath, cmdLine.logAppend)) {
+                 cout << "Bad logpath value: \"" << absoluteLogpath << "\"; terminating." << endl;
+                 return false;
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/db/instance.cpp mongodb-src-r2.4.4/src/mongo/db/instance.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/db/instance.cpp	2013-06-16 20:57:57.400197712 +0200
++++ mongodb-src-r2.4.4/src/mongo/db/instance.cpp	2013-06-28 20:44:18.037138076 +0200
+@@ -891,13 +891,21 @@
+                 i != boost::filesystem::directory_iterator(); ++i ) {
+             if ( directoryperdb ) {
+                 boost::filesystem::path p = *i;
++            #if BOOST_VERSION >= 104400
+                 string dbName = p.leaf().string();
++            #else
++                string dbName = p.leaf();
++            #endif
+                 p /= ( dbName + ".ns" );
+                 if ( exists( p ) )
+                     names.push_back( dbName );
+             }
+             else {
++            #if BOOST_VERSION >= 104400
+                 string fileName = boost::filesystem::path(*i).leaf().string();
++            #else
++                string fileName = boost::filesystem::path(*i).leaf();
++            #endif
+                 if ( fileName.length() > 3 && fileName.substr( fileName.length() - 3, 3 ) == ".ns" )
+                     names.push_back( fileName.substr( 0, fileName.length() - 3 ) );
+             }
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/db/pdfile.cpp mongodb-src-r2.4.4/src/mongo/db/pdfile.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/db/pdfile.cpp	2013-06-16 20:57:57.418194086 +0200
++++ mongodb-src-r2.4.4/src/mongo/db/pdfile.cpp	2013-06-28 20:44:18.045139103 +0200
+@@ -30,6 +30,7 @@
+ #include <algorithm>
+ #include <boost/filesystem/operations.hpp>
+ #include <boost/optional/optional.hpp>
++#include <boost/utility/in_place_factory.hpp>
+ #include <list>
+ 
+ #include "mongo/base/counter.h"
+@@ -1916,7 +1917,11 @@
+             virtual bool apply( const Path &p ) {
+                 if ( !boost::filesystem::exists( p ) )
+                     return false;
++            #if BOOST_VERSION >= 104400
+                 boostRenameWrapper( p, newPath_ / ( p.leaf().string() + ".bak" ) );
++            #else
++                boostRenameWrapper( p, newPath_ / ( p.leaf() + ".bak" ) );
++            #endif
+                 return true;
+             }
+             virtual const char * op() const {
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/pch.h mongodb-src-r2.4.4/src/mongo/pch.h
+--- mongodb-src-r2.4.4.orig/src/mongo/pch.h	2013-06-16 20:57:57.424192878 +0200
++++ mongodb-src-r2.4.4/src/mongo/pch.h	2013-06-28 20:44:18.046139231 +0200
+@@ -47,6 +47,7 @@
+ #define BOOST_FILESYSTEM_VERSION 3
+ #include <boost/shared_ptr.hpp>
+ #include <boost/smart_ptr.hpp>
++#include <boost/make_shared.hpp>
+ #include <boost/function.hpp>
+ #include <boost/bind.hpp>
+ #include <boost/version.hpp>
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/shell/shell_utils_extended.cpp mongodb-src-r2.4.4/src/mongo/shell/shell_utils_extended.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/shell/shell_utils_extended.cpp	2013-06-16 20:57:57.487180186 +0200
++++ mongodb-src-r2.4.4/src/mongo/shell/shell_utils_extended.cpp	2013-06-28 20:44:18.043138846 +0200
+@@ -58,7 +58,11 @@
+             while ( i != end ) {
+                 boost::filesystem::path p = *i;
+                 BSONObjBuilder b;
++            #if BOOST_VERSION >= 104400
+                 b << "name" << p.generic_string();
++            #else
++                b << "name" << p.string();
++            #endif
+                 b.appendBool( "isDirectory", is_directory( p ) );
+                 if ( ! boost::filesystem::is_directory( p ) ) {
+                     try {
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/tools/restore.cpp mongodb-src-r2.4.4/src/mongo/tools/restore.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/tools/restore.cpp	2013-06-16 20:57:57.425192676 +0200
++++ mongodb-src-r2.4.4/src/mongo/tools/restore.cpp	2013-06-28 20:44:18.041138589 +0200
+@@ -231,7 +231,11 @@
+         LOG(2) << "drillDown: " << root.string() << endl;
+ 
+         // skip hidden files and directories
++    #if BOOST_VERSION >= 104400
+         if (root.leaf().string()[0] == '.' && root.leaf().string() != ".")
++    #else
++        if (root.leaf()[0] == '.' && root.leaf() != ".")
++    #endif
+             return;
+ 
+         if ( is_directory( root ) ) {
+@@ -306,14 +310,24 @@
+             ns += _db;
+         }
+         else {
++        #if BOOST_VERSION >= 104400
+             ns = root.parent_path().filename().string();
++        #else
++            ns = root.parent_path().filename();
++        #endif
+             if (ns.empty())
+                 ns = "test";
+         }
+ 
+         verify( ns.size() );
+ 
+-        string oldCollName = root.leaf().string(); // Name of the collection that was dumped from
++        // Name of the collection that was dumped from
++    #if BOOST_VERSION >= 104400
++        string oldCollName = root.leaf().string();
++    #else
++        string oldCollName = root.leaf();
++    #endif
++
+         oldCollName = oldCollName.substr( 0 , oldCollName.find_last_of( "." ) );
+         if (use_coll) {
+             ns += "." + _coll;
+@@ -352,7 +366,11 @@
+             if (!boost::filesystem::exists(metadataFile.string())) {
+                 // This is fine because dumps from before 2.1 won't have a metadata file, just print a warning.
+                 // System collections shouldn't have metadata so don't warn if that file is missing.
++            #if BOOST_VERSION >= 104400
+                 if (!startsWith(metadataFile.leaf().string(), "system.")) {
++            #else
++                if (!startsWith(metadataFile.leaf(), "system.")) {
++            #endif
+                     log() << metadataFile.string() << " not found. Skipping." << endl;
+                 }
+             } else {
+diff -Nur mongodb-src-r2.4.4.orig/src/mongo/util/mmap.cpp mongodb-src-r2.4.4/src/mongo/util/mmap.cpp
+--- mongodb-src-r2.4.4.orig/src/mongo/util/mmap.cpp	2013-06-16 20:57:57.462185223 +0200
++++ mongodb-src-r2.4.4/src/mongo/util/mmap.cpp	2013-06-28 20:44:18.044138974 +0200
+@@ -198,7 +198,11 @@
+     void MongoFile::setFilename(const std::string& fn) {
+         LockMongoFilesExclusive lk;
+         verify( _filename.empty() );
++    #if BOOST_VERSION >= 104400
+         _filename = boost::filesystem::absolute(fn).generic_string();
++    #else
++        _filename = boost::filesystem::system_complete(fn).string();
++    #endif
+         MongoFile *&ptf = pathToFile[_filename];
+         massert(13617, "MongoFile : multiple opens of same filename", ptf == 0);
+         ptf = this;
+@@ -206,8 +210,12 @@
+ 
+     MongoFile* MongoFileFinder::findByPath(const std::string& path) const {
+         return mapFindWithDefault(pathToFile,
+-                                  boost::filesystem::absolute(path).generic_string(),
+-                                  static_cast<MongoFile*>(NULL));
++        #if BOOST_VERSION >= 104400
++            boost::filesystem::absolute(path).generic_string(),
++        #else
++            boost::filesystem::system_complete(path).string(),
++        #endif
++            static_cast<MongoFile*>(NULL));
+     }
+ 
+ 

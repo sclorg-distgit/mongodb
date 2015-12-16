@@ -1,0 +1,17 @@
+[Unit]
+Description=High-performance, schema-free document-oriented database
+After=syslog.target network.target
+
+[Service]
+Type=forking
+User=mongodb
+PIDFile=/var/run/mongodb/mongodb.pid
+EnvironmentFile=__SCL_SCRIPTS__/service-environment
+EnvironmentFile=/etc/sysconfig/mongodb
+ExecStart=/usr/bin/scl enable __list of scls__ -- /usr/bin/mongod $OPTIONS run
+# FIXME after selinux-policy has the needed stuff
+#PrivateTmp=true
+LimitNOFILE=64000
+
+[Install]
+WantedBy=multi-user.target
