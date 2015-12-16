@@ -1,0 +1,38 @@
+diff -urp mongodb-src-r2.4.5.orig/SConstruct mongodb-src-r2.4.5/SConstruct
+--- mongodb-src-r2.4.5.orig/SConstruct	2013-07-08 16:30:00.013000000 -0500
++++ mongodb-src-r2.4.5/SConstruct	2013-07-08 16:30:32.853000000 -0500
+@@ -154,6 +154,9 @@ add_option( "cxx", "compiler to use" , 1
+ add_option( "cc", "compiler to use for c" , 1 , True )
+ add_option( "ld", "linker to use" , 1 , True )
+ 
++add_option( "extraccflags", "add'l ccflag options  (--extraccflags -fPIC)" , 1 , True )
++add_option( "extralinkflags", "add'l linkflag options  (--extralinkflags -fPIC)" , 1 , True )
++
+ add_option( "cpppath", "Include path if you have headers in a nonstandard directory" , 1 , True )
+ add_option( "libpath", "Library path if you have libraries in a nonstandard directory" , 1 , True )
+ 
+@@ -450,6 +453,14 @@ if has_option( "extralib" ):
+     for x in GetOption( "extralib" ).split( "," ):
+         env.Append( LIBS=[ x ] )
+ 
++if has_option( "extraccflags" ):
++    for x in GetOption( "extraccflags" ).split( " " ):
++        env.Append( CCFLAGS=[ x ] )
++
++if has_option( "extralinkflags" ):
++    for x in GetOption( "extralinkflags" ).split( " " ):
++        env.Append( LINKFLAGS=[ x ] )
++
+ class InstallSetup:
+     binaries = False
+     libraries = False
+@@ -765,6 +776,9 @@ if nix:
+         print( "removing precompiled headers" )
+         os.unlink( env.File("$BUILD_DIR/mongo/pch.h.$GCHSUFFIX").abspath ) # gcc uses the file if it exists
+ 
++    print( "DEBUG - CCFLAGS::" + env["CCFLAGS"] + "::" )
++    print( "DEBUG - LINKFLAGS::" + env["LINKFLAGS"] + "::" )
++
+ if usesm:
+     env.Append( CPPDEFINES=["JS_C_STRINGS_ARE_UTF8"] )
+ 

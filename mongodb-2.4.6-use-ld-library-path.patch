@@ -1,0 +1,14 @@
+diff -up mongodb-src-r2.4.8/SConstruct.paths mongodb-src-r2.4.8/SConstruct
+--- mongodb-src-r2.4.8/SConstruct.paths	2013-11-26 21:07:05.786573244 +0100
++++ mongodb-src-r2.4.8/SConstruct	2013-11-26 21:44:13.547311023 +0100
+@@ -559,6 +559,10 @@ elif os.sys.platform.startswith("linux")
+         env.Append( LINKFLAGS=" -static " )
+     if has_option( "static-libstdc++" ):
+         env.Append( LINKFLAGS=" -static-libstdc++ " )
++    if 'LD_LIBRARY_PATH' not in env['ENV']:
++        env['ENV']['LD_LIBRARY_PATH'] = os.environ['LD_LIBRARY_PATH']
++    env.Append( EXTRALIBPATH= os.environ['LIBRARY_PATH'].split(":") )
++    env.Append( EXTRACPPPATH= os.environ['CPATH' ].split(":") ) 
+ 
+ elif "sunos5" == os.sys.platform:
+      nix = True

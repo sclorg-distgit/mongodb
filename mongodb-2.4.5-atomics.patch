@@ -1,0 +1,128 @@
+diff -up mongodb-src-r2.4.5/src/mongo/bson/util/atomic_int.h.atomics mongodb-src-r2.4.5/src/mongo/bson/util/atomic_int.h
+--- mongodb-src-r2.4.5/src/mongo/bson/util/atomic_int.h.atomics	2013-07-02 15:27:08.000000000 -0400
++++ mongodb-src-r2.4.5/src/mongo/bson/util/atomic_int.h	2013-07-11 10:20:25.474610585 -0400
+@@ -24,6 +24,10 @@
+ 
+ #include "mongo/platform/compiler.h"
+ 
++#define GCC_VERSION (__GNUC__ * 10000                 \
++                     + __GNUC_MINOR__ * 100           \
++                     + __GNUC_PATCHLEVEL__)
++
+ namespace mongo {
+ 
+     /**
+@@ -72,6 +76,28 @@ namespace mongo {
+         InterlockedAdd((volatile long *)&x,by);
+     }
+ # endif
++#elif defined(GCC_VERSION) && GCC_VERSION >= 40700
++// in GCC version >= 4.7.0 we can use the built-in atomic operations
++
++    inline void AtomicUInt::set(unsigned newX) {
++        __atomic_store_n (&x, newX, __ATOMIC_SEQ_CST);
++    }
++    AtomicUInt AtomicUInt::operator++() {    // ++prefix
++        return __atomic_add_fetch(&x, 1, __ATOMIC_SEQ_CST);
++    }
++    AtomicUInt AtomicUInt::operator++(int) { // postfix++
++        return __atomic_fetch_add(&x, 1, __ATOMIC_SEQ_CST);
++    }
++    AtomicUInt AtomicUInt::operator--() {    // --prefix
++        return __atomic_add_fetch(&x, -1, __ATOMIC_SEQ_CST);
++    }
++    AtomicUInt AtomicUInt::operator--(int) { // postfix--
++        return __atomic_fetch_add(&x, -1, __ATOMIC_SEQ_CST);
++    }
++    void AtomicUInt::signedAdd(int by) {
++        __atomic_fetch_add(&x, by, __ATOMIC_SEQ_CST);
++    }
++
+ #elif defined(__GCC_HAVE_SYNC_COMPARE_AND_SWAP_4)
+     // this is in GCC >= 4.1
+     inline void AtomicUInt::set(unsigned newX) { __sync_synchronize(); x = newX; }
+diff -up mongodb-src-r2.4.5/src/mongo/platform/atomic_intrinsics_gcc.h.atomics mongodb-src-r2.4.5/src/mongo/platform/atomic_intrinsics_gcc.h
+--- mongodb-src-r2.4.5/src/mongo/platform/atomic_intrinsics_gcc.h.atomics	2013-07-02 15:27:08.000000000 -0400
++++ mongodb-src-r2.4.5/src/mongo/platform/atomic_intrinsics_gcc.h	2013-07-11 10:20:25.479611190 -0400
+@@ -14,16 +14,60 @@
+  */
+ 
+ /**
+- * Implementation of the AtomicIntrinsics<T>::* operations for IA-32 and AMD64 systems using a
+- * GCC-compatible compiler toolchain.
++ * Implementation of the AtomicIntrinsics<T>::* operations for GCC-compatible compiler toolchain.
+  */
+ 
+ #pragma once
+ 
+ #include <boost/utility.hpp>
+ 
++#define GCC_VERSION (__GNUC__ * 10000                 \
++                     + __GNUC_MINOR__ * 100           \
++                     + __GNUC_PATCHLEVEL__)
++
+ namespace mongo {
+ 
++// If GCC version >= 4.7.0, we can use the built-in atomic operations
++#if defined(GCC_VERSION) && GCC_VERSION >= 40700
++
++    /**
++     * Instantiation of AtomicIntrinsics<>.
++     */
++    template <typename T>
++    class AtomicIntrinsics {
++    public:
++
++        static T compareAndSwap(volatile T* dest, T expected, T newValue) {
++            return __atomic_compare_exchange_n (dest, &expected, newValue, 0, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
++        }
++
++        static T swap(volatile T* dest, T newValue) {
++            return __atomic_exchange_n (dest, newValue, __ATOMIC_SEQ_CST);
++        }
++
++        static T load(volatile const T* value) {
++            return __atomic_load_n (value, __ATOMIC_SEQ_CST);
++        }
++
++        static T loadRelaxed(volatile const T* value) {
++            return *value;
++        }
++
++        static void store(volatile T* dest, T newValue) {
++            __atomic_store_n (dest, newValue, __ATOMIC_SEQ_CST);
++        }
++
++        static T fetchAndAdd(volatile T* dest, T increment) {
++            return __atomic_fetch_add (dest, increment, __ATOMIC_SEQ_CST);
++        }
++
++    private:
++        AtomicIntrinsics();
++        ~AtomicIntrinsics();
++    };
++
++#else // GCC version < 4.7, so we must use legacy (platform-specific) atomic operations
++
+     /**
+      * Instantiation of AtomicIntrinsics<> for all word types T where sizeof<T> <= sizeof(void *).
+      *
+@@ -163,4 +207,6 @@ namespace mongo {
+         ~AtomicIntrinsics();
+     };
+ 
++#endif // GCC_VERSION >= 40700
++
+ }  // namespace mongo
+diff -up mongodb-src-r2.4.5/src/mongo/platform/bits.h.atomics mongodb-src-r2.4.5/src/mongo/platform/bits.h
+--- mongodb-src-r2.4.5/src/mongo/platform/bits.h.atomics	2013-07-02 15:27:08.000000000 -0400
++++ mongodb-src-r2.4.5/src/mongo/platform/bits.h	2013-07-11 10:20:25.484611795 -0400
+@@ -21,7 +21,7 @@
+ 
+ #if defined(__x86_64__) || defined(__amd64__) || defined(_WIN64)
+ #define MONGO_PLATFORM_64
+-#elif defined(__i386__) || defined(_WIN32)
++#elif defined(__i386__) || defined(_WIN32) || defined(__arm__)
+ #define MONGO_PLATFORM_32
+ #else
+ #error "unknown platform"
