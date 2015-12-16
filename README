@@ -1,0 +1,63 @@
+To run mongoDB tests enable rh-mongodb26 and python27 Software Collections:
+       $ scl enable rh-mongodb26 python27 bash
+
+This directory contains a test suite for the mongoDB daemon. To run the 
+currently existing test cases, execute "./smoke.py all" in this directory.
+
+For use in Red Hat distributions, you should run the script as user mongodb, 
+who is created with nologin shell however, so the best bet is something like:
+       $ su -
+       # cd /usr/share/mongodb-test
+       # scl enable rh-mongodb26 python27 bash
+       # su -s /bin/bash mongodb -c "./smoke.py all"
+
+This will use the installed mongodb executables, but will run a private copy 
+of the server process (using data files within /usr/share/mongodb-test/var/), 
+so you need not start the mongod service beforehand.
+
+To clean up afterwards, remove the created "var/*" subdirectories, eg
+       # su -s /bin/bash - mongodb -c "rm -rf /usr/share/mongodb-test/var/*"
+
+If one or more tests fail on your system, please read the following manual 
+section for instructions on how to report the problem:
+
+http://www.mongodb.org/about/contributors/tutorial/submit-bug-reports/
+
+MongoDB offers these test suites: mongosTest, jsCore, quota, jsPerf, disk, 
+noPassthroughWithMongod, noPassthrough, parallel, repl, replSets, dur, auth, 
+sharding, tool, aggregation, multiVersion, failPoint, ssl, sslSpecial, gle, 
+slow1 and slow2. To run a specific testsuite execute "./smoke.py TESTSUITE".
+
+If you want to run a specific test, use the --mode=files option to smoke.py 
+and specify what JavaSctipt file from /usr/share/mongodb-test/jstests/ you 
+want to run. It is also possible to specify more files. For example to run 
+jstests/libs/*.js files execute "./smoke.py --mode=files jstests/libs/*.js"
+
+If you want to use an already running mongoBD server for specific tests, use 
+the '--dont-start-mongod' option to smoke.py. Please note that in this mode, 
+the test suite expects you to run mongod with desired options. For example, 
+here is the command to run the "jsCore" tests with an external server: 
+"./smoke.py --dont-start-mongod jsCore --port 27017"
+
+For more options run "./smoke.py --help".
+
+
+In Red Hat distributions use this syntax:
+       $ su -
+       # cd /usr/share/mongodb-test
+       # scl enable rh-mongodb26 python27 bash
+       # su -s /bin/bash mongodb -c "./smoke.py OPTIONS"
+
+More info about mongoDB testing: 
+http://www.mongodb.org/about/contributors/tutorial/test-the-mongodb-server/
+
+
+
+Notes:
+
+- ARM architecture is not fully supported - 
+  https://jira.mongodb.org/browse/SERVER-1811
+
+- This subpackage does not contain dbtest (it is going to be 
+  deprecated) and perftest (it is not working at all) binaries.
+
