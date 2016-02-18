@@ -1,0 +1,17 @@
+[Unit]
+Description=High-performance, schema-free document-oriented database
+After=syslog.target network.target
+
+[Service]
+Type=forking
+User=mongodb
+PIDFile=/var/run/mongodb/mongos.pid
+EnvironmentFile=__SCL_SCRIPTS__/service-environment
+EnvironmentFile=/etc/sysconfig/mongos
+ExecStart=@libexecdir@/mongodb-scl-helper enable __list of scls__ -- /usr/bin/mongos $OPTIONS
+PrivateTmp=true
+LimitNOFILE=64000
+TimeoutStartSec=180
+
+[Install]
+WantedBy=multi-user.target
