@@ -30,8 +30,8 @@
 %endif
 
 Name:           %{?scl_prefix}mongodb
-Version:        3.2.1
-Release:        1%{?dist}
+Version:        3.2.6
+Release:        2%{?dist}
 Summary:        High-performance, schema-free document-oriented database
 Group:          Applications/Databases
 License:        AGPLv3 and zlib and ASL 2.0
@@ -234,7 +234,7 @@ sed -i -r -e "s|(/usr/share)|%{_datarootdir}|g" \
 cat > variables.list << EOF
 CCFLAGS="%{?optflags}"
 CPPDEFINES="BOOST_NO_CXX11_SCOPED_ENUMS"
-LINKFLAGS="%{?__global_ldflags}"
+LINKFLAGS="%{?__global_ldflags}  -Wl,-z,noexecstack"
 LIBPATH="%{_libdir}"
 CPPPATH="%{_includedir}/mozjs-38","%{_includedir}"
 
@@ -329,12 +329,16 @@ install -p -m 644 debian/mongos.1     %{buildroot}%{_mandir}/man1/
 mkdir -p %{buildroot}%{_datadir}/%{pkg_name}-test
 mkdir -p %{buildroot}%{_datadir}/%{pkg_name}-test/var
 mkdir -p %{buildroot}%{_datadir}/%{pkg_name}-test/buildscripts
-install -p -D -m 555 buildscripts/resmoke.py   %{buildroot}%{_datadir}/%{pkg_name}-test/
+install -p -D -m 755 buildscripts/resmoke.py   %{buildroot}%{_datadir}/%{pkg_name}-test/
 install -p -D -m 444 buildscripts/__init__.py  %{buildroot}%{_datadir}/%{pkg_name}-test/buildscripts/
 
 cp -R     buildscripts/resmokeconfig     %{buildroot}%{_datadir}/%{pkg_name}-test/buildscripts/
 cp -R     buildscripts/resmokelib        %{buildroot}%{_datadir}/%{pkg_name}-test/buildscripts/
 cp -R     jstests                        %{buildroot}%{_datadir}/%{pkg_name}-test/
+# Remove executable flag from JS tests
+for file in `find %{buildroot}%{_datadir}/%{pkg_name}-test/jstests -type f`; do
+  chmod a-x $file
+done
 
 install -p -D -m 444    "$(basename %{SOURCE11})"           %{buildroot}%{_datadir}/%{pkg_name}-test/
 %endif
@@ -351,14 +355,13 @@ cd %{_builddir}/%{pkg_name}-src-r%{version}
 mkdir ./var
 
 # Run new-style unit tests (*_test files)
-while read unittest
-do
-    ./$unittest
-    if [ $? -ne 0 ]
-    then
-        exit 1
-    fi
-done < ./build/unittests.txt
+./buildscripts/resmoke.py --dbpathPrefix `pwd`/var --continueOnFailure --mongo=%{buildroot}%{_bindir}/mongo --mongod=%{buildroot}%{_bindir}/%{daemon} --mongos=%{buildroot}%{_bindir}/%{daemonshard} --nopreallocj --suites unittests \
+%ifarch x86_64
+--storageEngine=wiredTiger
+%else
+--storageEngine=mmapv1
+%endif
+
 
 # Run JavaScript integration tests
 ./buildscripts/resmoke.py --dbpathPrefix `pwd`/var --continueOnFailure --mongo=%{buildroot}%{_bindir}/mongo --mongod=%{buildroot}%{_bindir}/%{daemon} --mongos=%{buildroot}%{_bindir}/%{daemonshard} --nopreallocj --suites core \
@@ -491,16 +494,31 @@ fi
 %ifarch %{ix86} x86_64
 %files test
 %doc %{_datadir}/%{pkg_name}-test/README
+%defattr(-,%{pkg_name},root)
 %dir %attr(0755, %{pkg_name}, root) %{_datadir}/%{pkg_name}-test
 %dir %attr(0755, %{pkg_name}, root) %{_datadir}/%{pkg_name}-test/var
-%defattr(0444,%{pkg_name},root)
-%{_datadir}/%{pkg_name}-test
-%attr(0755,-,-) %{_datadir}/%{pkg_name}-test/resmoke.py
+%{_datadir}/%{pkg_name}-test/jstests
+%{_datadir}/%{pkg_name}-test/buildscripts
+%{_datadir}/%{pkg_name}-test/resmoke.*
 %endif
 %endif
 
 
 %changelog
+* Tue May 10 2016 Marek Skalicky <mskalick@redhat.com> - 3.2.6-2
+- Disable executable stack (since MongoDB 3.2.5)
+  Resolves: #1333660
+
+* Fri May 6 2016 Marek Skalicky <mskalick@redhat.com> - 3.2.6-1
+- Upgrade to MongoDB 3.2.6
+  Resolves: #1333660
+
+* Wed Apr 6 2016 Marek Skalicky <mskalick@redhat.com> - 3.2.4-1
+- Upgrade to version 3.2.4
+
+* Wed Apr 6 2016 Marek Skalicky <mskalick@redhat.com> - 3.2.1-2
+- Fixed permissions in test subpackage
+
 * Wed Dec 9 2015 Marek Skalicky <mskalick@redhat.com> - 3.2.1-1
 - Configuration files updated
   (mongod and mongos also listen on ipv6 localhost by default)
