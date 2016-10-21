@@ -30,8 +30,8 @@
 %endif
 
 Name:           %{?scl_prefix}mongodb
-Version:        3.2.6
-Release:        2%{?dist}
+Version:        3.2.9
+Release:        1%{?dist}
 Summary:        High-performance, schema-free document-oriented database
 Group:          Applications/Databases
 License:        AGPLv3 and zlib and ASL 2.0
@@ -505,6 +505,10 @@ fi
 
 
 %changelog
+* Fri Sep 16 2016 Marek Skalický <mskalick@redhat.com> - 3.2.9-1
+- Update to latest upstream minor version (3.2.9)
+   Resolves: RHBZ#1376475
+
 * Tue May 10 2016 Marek Skalicky <mskalick@redhat.com> - 3.2.6-2
 - Disable executable stack (since MongoDB 3.2.5)
   Resolves: #1333660

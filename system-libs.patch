@@ -1,8 +1,8 @@
 diff --git a/SConstruct b/SConstruct
-index a1b5e0e..3752443 100644
+index bdafd06..9350c29 100644
 --- a/SConstruct
 +++ b/SConstruct
-@@ -349,6 +349,11 @@ add_option('use-system-asio',
+@@ -363,6 +363,11 @@ add_option('use-system-asio',
      nargs=0,
  )
  
@@ -14,7 +14,7 @@ index a1b5e0e..3752443 100644
  add_option('use-system-intel_decimal128',
      help='use system version of intel decimal128',
      nargs=0,
-@@ -2227,11 +2232,17 @@ def doConfigure(myenv):
+@@ -2394,11 +2399,17 @@ def doConfigure(myenv):
      if use_system_version_of_library("intel_decimal128"):
          conf.FindSysLibDep("intel_decimal128", ["bid"])
  
@@ -33,11 +33,11 @@ index a1b5e0e..3752443 100644
          CPPDEFINES=[
              ("BOOST_THREAD_VERSION", "4"),
 diff --git a/src/mongo/executor/connection_pool_asio.h b/src/mongo/executor/connection_pool_asio.h
-index 6700819..d00670b 100644
+index 2924331..54e5d53 100644
 --- a/src/mongo/executor/connection_pool_asio.h
 +++ b/src/mongo/executor/connection_pool_asio.h
 @@ -35,6 +35,8 @@
- #include "mongo/executor/async_stream_interface.h"
+ #include "mongo/executor/network_interface_asio.h"
  #include "mongo/stdx/mutex.h"
  
 +#include <asio/steady_timer.hpp>
@@ -46,10 +46,10 @@ index 6700819..d00670b 100644
  namespace executor {
  namespace connection_pool_asio {
 diff --git a/src/third_party/SConscript b/src/third_party/SConscript
-index 8301c8f..e5f0ef4 100644
+index 5ff1ace..dd3b73f 100644
 --- a/src/third_party/SConscript
 +++ b/src/third_party/SConscript
-@@ -36,13 +36,18 @@ if not use_system_version_of_library('zlib'):
+@@ -41,13 +41,18 @@ if not use_system_version_of_library('zlib'):
  # TODO: figure out if we want to offer system versions of mozjs.  Mozilla
  # hasn't offered a source tarball since 24, but in theory they could.
  #
@@ -70,7 +70,7 @@ index 8301c8f..e5f0ef4 100644
  
  if not use_system_version_of_library('stemmer'):
      thirdPartyIncludePathList.append(
-@@ -193,13 +198,20 @@ zlibEnv.Library(
+@@ -198,13 +203,20 @@ zlibEnv.Library(
      ])
  
  if usemozjs:
@@ -98,7 +98,7 @@ index 8301c8f..e5f0ef4 100644
  
      mozjsEnv.Library(
          target="shim_mozjs",
-@@ -311,10 +323,7 @@ if wiredtiger:
+@@ -316,10 +328,7 @@ if wiredtiger:
          ])
  
  if use_system_version_of_library("asio"):
