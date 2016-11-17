@@ -30,7 +30,7 @@
 %endif
 
 Name:           %{?scl_prefix}mongodb
-Version:        3.2.9
+Version:        3.2.10
 Release:        1%{?dist}
 Summary:        High-performance, schema-free document-oriented database
 Group:          Applications/Databases
@@ -505,6 +505,10 @@ fi
 
 
 %changelog
+* Wed Oct 19 2016 Marek Skalický <mskalick@redhat.com> - 3.2.10-1
+- Update to latest upstream minor version (3.2.10)
+   Resolves: RHBZ#1386229
+
 * Fri Sep 16 2016 Marek Skalický <mskalick@redhat.com> - 3.2.9-1
 - Update to latest upstream minor version (3.2.9)
    Resolves: RHBZ#1376475
