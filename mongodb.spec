@@ -44,8 +44,8 @@
 %endif
 
 Name:           %{?scl_prefix}mongodb
-Version:        3.4.3
-Release:        2%{?dist}
+Version:        3.4.6
+Release:        1%{?dist}
 Summary:        High-performance, schema-free document-oriented database
 Group:          Applications/Databases
 License:        AGPLv3 and zlib and ASL 2.0
@@ -67,6 +67,13 @@ Source9:        %{daemonshard}.service
 Source10:       %{daemonshard}.sysconf
 Source11:       README
 Source12:       daemon-scl-helper.sh
+
+# broken checking of system boost version
+# https://jira.mongodb.org/browse/SERVER-30199
+Patch6:         fix-boost-version-check.patch
+# Using string instead of std::string
+# https://jira.mongodb.org/browse/SERVER-30166
+Patch7:         using-std-string.patch
 
 BuildRequires:  gcc >= 4.8.2
 BuildRequires:  %{?scl_prefix}boost-devel >= 1.56
@@ -91,9 +98,9 @@ BuildRequires:  systemd
 %if %runselftest
 BuildRequires:  %{?scl_python_prefix}python-pymongo
 BuildRequires:  %{?scl_python_prefix}PyYAML
+%endif
 # 2to3 utility is needed to be able to use python3 interpreter
 BuildRequires:  %{?scl_python_prefix}python-tools
-%endif
 BuildRequires:  %{?devtoolset_prefix}gcc-c++
 
 %{?scl:Requires:%scl_runtime}
@@ -169,8 +176,17 @@ This package contains the regression test suite distributed with
 the MongoDB sources.
 %endif
 
+# syspath subpackages
+%if 0%{?scl:1}
+%scl_syspaths_package server -d
+%scl_syspaths_package -d
+%endif
+
 %prep
 %setup -q -n mongodb-src-r%{version}
+
+%patch6 -p1
+%patch7 -p1
 
 # CRLF -> LF
 sed -i 's/\r//' README
@@ -374,6 +390,35 @@ done < ./build/unittests.txt
 %endif
 %endif
 
+# syspath subpackages
+%if 0%{?scl:1}
+server_binaries='mongod mongos'
+binaries='mongo mongoperf'
+binaries_no_man='mongobridge'
+for pkg in '' server; do
+       mans= sep= pkg_name=mongodb${pkg:+-$pkg}
+       eval "list=\$${pkg:+${pkg}_}binaries"
+       for bin in $list; do mans+="${sep}man1/$bin.1.gz" ; sep=' '; done
+       %scl_syspaths_install_wrappers -n $pkg_name -m script -p bin $list
+       %scl_syspaths_install_wrappers -n $pkg_name -m link -p man $mans
+done
+%scl_syspaths_install_wrappers -n mongodb-server -m script -p bin $binaries_no_man
+
+%scl_syspaths_install_wrapper -n mongodb-server -m link %{_sysconfdir}/%{daemon}.conf %{_root_sysconfdir}/%{scl_prefix}%{daemon}.conf
+%scl_syspaths_install_wrapper -n mongodb-server -m link %{_sysconfdir}/%{daemonshard}.conf %{_root_sysconfdir}/%{scl_prefix}%{daemonshard}.conf
+
+%scl_syspaths_install_wrapper -n mongodb-server -m link %{_localstatedir}/log/%{pkg_name} %{_root_localstatedir}/log/%{name}
+%scl_syspaths_install_wrapper -n mongodb-server -m link %{_sharedstatedir}/%{pkg_name} %{_root_localstatedir}/lib/%{name}
+
+%if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
+%scl_syspaths_install_wrapper -n mongodb-server -m link %{_unitdir}/%{?scl_prefix}%{daemon}.service %{_unitdir}/%{daemon}.service
+%scl_syspaths_install_wrapper -n mongodb-server -m link %{_unitdir}/%{?scl_prefix}%{daemonshard}.service %{_unitdir}/%{daemonshard}.service
+%else
+%scl_syspaths_install_wrapper -n mongodb-server -m link %{_initddir}/%{?scl_prefix}%{daemon} %{_initddir}/%{daemon}
+%scl_syspaths_install_wrapper -n mongodb-server -m link %{_initddir}/%{?scl_prefix}%{daemonshard} %{_initddir}/%{daemonshard}
+%endif
+%endif
+
 
 %check
 %if %runselftest
@@ -383,6 +428,9 @@ set -ex
 # http://www.mongodb.org/about/contributors/tutorial/test-the-mongodb-server/
 cd %{_builddir}/%{pkg_name}-src-r%{version}
 mkdir ./var
+
+# Disable jsHeapLimit test - it tries to resolve hostname and it is not possible in brew
+rm jstests/core/jsHeapLimit.js
 
 # Run old-style heavy unit tests (dbtest binary)
 #mkdir ./var/dbtest
@@ -536,8 +584,21 @@ fi
 %{_datadir}/%{pkg_name}-test/resmoke.*
 %endif
 
+# syspath subpackages
+%if 0%{?scl:1}
+%scl_syspaths_files
+%scl_syspaths_files server
+%endif
+
 
 %changelog
+* Fri Jul 21 2017 Marek Skalický <mskalick@redhat.com> - 3.4.6-1
+- Update to 3.4.6 minor version
+  Resolves: RHBZ#1474252
+
+* Fri Jun 23 2017 Marek Skalický <mskalick@redhat.com> - 3.4.3-3
+- Add -syspath subpackages
+
 * Tue Jun 20 2017 Marek Skalický <mskalick@redhat.com> - 3.4.3-2
 - Use gcc from devtoolset for compilation
 - Fix dependencies
