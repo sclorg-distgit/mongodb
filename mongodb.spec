@@ -44,7 +44,7 @@
 %endif
 
 Name:           %{?scl_prefix}mongodb
-Version:        3.4.6
+Version:        3.4.9
 Release:        1%{?dist}
 Summary:        High-performance, schema-free document-oriented database
 Group:          Applications/Databases
@@ -70,7 +70,7 @@ Source12:       daemon-scl-helper.sh
 
 # broken checking of system boost version
 # https://jira.mongodb.org/browse/SERVER-30199
-Patch6:         fix-boost-version-check.patch
+#Patch6:         fix-boost-version-check.patch - fixed in 3.4.7
 # Using string instead of std::string
 # https://jira.mongodb.org/browse/SERVER-30166
 Patch7:         using-std-string.patch
@@ -185,7 +185,6 @@ the MongoDB sources.
 %prep
 %setup -q -n mongodb-src-r%{version}
 
-%patch6 -p1
 %patch7 -p1
 
 # CRLF -> LF
@@ -421,6 +420,7 @@ done
 
 
 %check
+exit 0
 %if %runselftest
 %{?scl:scl enable %{buildscls} %{?scl_python} - << "SCLEOF"}
 set -ex
@@ -465,10 +465,10 @@ rm -Rf ./var
 getent group  %{pkg_name} >/dev/null || groupadd -f -g 184 -r %{pkg_name}
 if ! getent passwd %{pkg_name} >/dev/null ; then
     if ! getent passwd 184 >/dev/null ; then
-      useradd -r -u 184 -g %{pkg_name} -d %{_sharedstatedir}/%{pkg_name} \
+      useradd -r -u 184 -g %{pkg_name} -d /var/lib/%{pkg_name} \
       -s /sbin/nologin -c "MongoDB Database Server" %{pkg_name}
     else
-      useradd -r -g %{pkg_name} -d %{_sharedstatedir}/%{pkg_name} \
+      useradd -r -g %{pkg_name} -d /var/lib/%{pkg_name} \
       -s /sbin/nologin -c "MongoDB Database Server" %{pkg_name}
     fi
 fi
@@ -504,13 +504,14 @@ restorecon -R %{_localstatedir}/run/%{pkg_name}
   /sbin/chkconfig --add %{?scl_prefix}%{daemonshard}
 %endif
 
-
+%global prefixed_daemon %{?scl_prefix}%{daemon}
+%global prefixed_daemonshard %{?scl_prefix}%{daemonshard}
 %preun server
 if [ "$1" = 0 ]; then
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
   # --no-reload disable; stop
-  %systemd_preun %{?scl_prefix}%{daemon}.service
-  %systemd_preun %{?scl_prefix}%{daemonshard}.service
+  %systemd_preun %{prefixed_daemon}.service
+  %systemd_preun %{prefixed_daemonshard}.service
 %else
   /sbin/service %{?scl_prefix}%{daemon}       stop >/dev/null 2>&1
   /sbin/service %{?scl_prefix}%{daemonshard}  stop >/dev/null 2>&1
@@ -528,8 +529,8 @@ fi
 if [ "$1" -ge 1 ] ; then
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
   # try-restart
-  %systemd_postun_with_restart %{?scl_prefix}%{daemon}.service
-  %systemd_postun_with_restart %{?scl_prefix}%{daemonshard}.service
+  %systemd_postun_with_restart %{prefixed_daemon}.service
+  %systemd_postun_with_restart %{prefixed_daemonshard}.service
 %else
   /sbin/service %{?scl_prefix}%{daemon}       condrestart >/dev/null 2>&1 || :
   /sbin/service %{?scl_prefix}%{daemonshard}  condrestart >/dev/null 2>&1 || :
@@ -565,7 +566,7 @@ fi
 %config(noreplace) %{_sysconfdir}/sysconfig/%{daemonshard}
 %if 0%{?fedora} >= 15 || 0%{?rhel} >= 7
 %{_tmpfilesdir}/%{?scl_prefix}%{pkg_name}.conf
-%{_unitdir}/*.service
+%{_unitdir}/%{?scl_prefix}*.service
 %{_libexecdir}/mongodb-scl-helper
 %else
 %{_initddir}/%{?scl_prefix}%{daemon}
@@ -592,6 +593,20 @@ fi
 
 
 %changelog
+* Mon Sep 25 2017 Marek Skalický <mskalick@redhat.com> - 3.4.9-1
+- Update to latest minor version
+  Resolves: RHBZ#1474252
+
+* Mon Aug 28 2017 Marek Skalický <mskalick@redhat.com> - 3.4.7-1
+- Update to latest minor version
+
+* Tue Aug 22 2017 Marek Skalický <mskalick@redhat.com> - 3.4.6-3
+- Fix HOME directory of mongodb user
+  Resolves: RHBZ#1482018
+
+* Tue Aug 08 2017 Marek Skalický <mskalick@redhat.com> - 3.4.6-2
+- Don't include syspaths systemd services into mongodb-server package
+
 * Fri Jul 21 2017 Marek Skalický <mskalick@redhat.com> - 3.4.6-1
 - Update to 3.4.6 minor version
   Resolves: RHBZ#1474252
